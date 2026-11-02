@@ -19,15 +19,20 @@ use Throwable;
 
 class SiswaController extends Controller
 {
+    protected $handler;
+
+    public function __construct(SiswaHandler $handler)
+    {
+        $this->handler = $handler;
+    }
+
     // MENAMPILKAN SEMUA SISWA
     public function index()
     {
         try {
             $fromCache = Cache::store('redis')->has('siswa');
 
-            $siswa = Cache::store('redis')->remember('siswa', 60, function () {
-                return Siswa::all();
-            });
+            $siswa = $this->handler->index();
 
             return response()->json([
                 'meta' => [
@@ -39,7 +44,9 @@ class SiswaController extends Controller
                 'data' => $siswa
             ], 200);
 
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
+            Log::error('Gagal menampilkan siswa: ' . $e->getMessage());
+
             return response()->json([
                 'meta' => [
                     'code' => 500,
@@ -49,7 +56,6 @@ class SiswaController extends Controller
             ], 500);
         }
     }
-
 
     // MENAMBAHKAN SISWA
     public function store(Request $request)
@@ -63,6 +69,8 @@ class SiswaController extends Controller
             ]);
 
             $siswa = Siswa::create($validated);
+
+            Cache::store('redis')->forget('siswa');
 
             return ApiResponse::response(
                 $siswa,
@@ -141,6 +149,8 @@ class SiswaController extends Controller
 
             $siswa->update($validated);
 
+            Cache::store('redis')->forget('siswa');
+
             return ApiResponse::response(
                 $siswa->fresh(),
                 'Data siswa berhasil diperbarui',
@@ -179,6 +189,8 @@ class SiswaController extends Controller
             }
 
             $siswa->delete();
+
+            Cache::store('redis')->forget('siswa');
 
             return ApiResponse::response(
                 null,

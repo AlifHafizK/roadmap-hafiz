@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Repositories\SiswaRepository;
+use Illuminate\Support\Facades\Cache;
 
 class SiswaService
 {
@@ -13,28 +14,51 @@ class SiswaService
         $this->repository = $repository;
     }
 
+    // Mengambil semua data siswa dengan Redis Cache
     public function index()
     {
-        return $this->repository->index();
+        return Cache::store('redis')->remember(
+            'siswa',
+            3600,
+            function () {
+                return $this->repository->index();
+            }
+        );
     }
 
+    // Mengambil satu data siswa
     public function show($id)
     {
         return $this->repository->show($id);
     }
 
+    // Menambahkan siswa dan menghapus cache lama
     public function store(array $data)
     {
-        return $this->repository->store($data);
+        $result = $this->repository->store($data);
+
+        Cache::store('redis')->forget('siswa');
+
+        return $result;
     }
 
+    // Memperbarui siswa dan menghapus cache lama
     public function update($id, array $data)
     {
-        return $this->repository->update($id, $data);
+        $result = $this->repository->update($id, $data);
+
+        Cache::store('redis')->forget('siswa');
+
+        return $result;
     }
 
+    // Menghapus siswa dan menghapus cache lama
     public function destroy($id)
     {
-        return $this->repository->destroy($id);
+        $result = $this->repository->destroy($id);
+
+        Cache::store('redis')->forget('siswa');
+
+        return $result;
     }
 }
