@@ -30,29 +30,26 @@ class SiswaController extends Controller
     public function index()
     {
         try {
-            $fromCache = Cache::store('redis')->has('siswa');
-
-            $siswa = $this->handler->index();
-
+            $result = $this->handler->index();
             return response()->json([
-                'meta' => [
-                    'code' => 200,
-                    'status' => 'success',
-                    'message' => 'Data siswa berhasil ditampilkan'
-                ],
-                'source' => $fromCache ? 'cache' : 'database',
-                'data' => $siswa
+                    'meta' => [
+                        'code' => 200,
+                        'status' => 'success',
+                        'message' => 'Data siswa berhasil ditampilkan'
+                    ],
+                    'source' => $result['source'],
+                    'data' => $result['data']
             ], 200);
 
-        } catch (Throwable $e) {
-            Log::error('Gagal menampilkan siswa: ' . $e->getMessage());
+            } catch (Throwable $e) {
+                Log::error('Gagal menampilkan siswa: ' . $e->getMessage());
 
-            return response()->json([
-                'meta' => [
-                    'code' => 500,
-                    'status' => 'error',
-                    'message' => 'Data siswa gagal ditampilkan'
-                ]
+                return response()->json([
+                    'meta' => [
+                        'code' => 500,
+                        'status' => 'error',
+                        'message' => 'Data siswa gagal ditampilkan'
+                    ]
             ], 500);
         }
     }
