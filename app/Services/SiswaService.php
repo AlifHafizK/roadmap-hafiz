@@ -19,7 +19,7 @@ class SiswaService
     {
         return Cache::store('redis')->remember(
             'siswa',
-            3600,
+            60,
             function () {
                 return $this->repository->index();
             }

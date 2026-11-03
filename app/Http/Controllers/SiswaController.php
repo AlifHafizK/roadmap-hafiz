@@ -31,26 +31,25 @@ class SiswaController extends Controller
     {
         try {
             $result = $this->handler->index();
+
             return response()->json([
-                    'meta' => [
-                        'code' => 200,
-                        'status' => 'success',
-                        'message' => 'Data siswa berhasil ditampilkan'
-                    ],
-                    'source' => $result['source'],
-                    'data' => $result['data']
+                'meta' => [
+                    'code' => 200,
+                    'status' => 'success',
+                    'message' => 'Data siswa berhasil ditampilkan'
+                ],
+                'source' => $result['source'],
+                'data' => $result['data']
             ], 200);
 
-            } catch (Throwable $e) {
-                Log::error('Gagal menampilkan siswa: ' . $e->getMessage());
+        } catch (Throwable $e) {
+            Log::error('Gagal menampilkan siswa: ' . $e->getMessage());
 
-                return response()->json([
-                    'meta' => [
-                        'code' => 500,
-                        'status' => 'error',
-                        'message' => 'Data siswa gagal ditampilkan'
-                    ]
-            ], 500);
+            return ApiResponse::response(
+                null,
+                'Data siswa gagal ditampilkan',
+                500
+            );
         }
     }
 
@@ -81,6 +80,7 @@ class SiswaController extends Controller
                 'Validasi gagal',
                 422
             );
+
         } catch (Throwable $e) {
             Log::error('Gagal menambahkan siswa: ' . $e->getMessage());
 
@@ -160,6 +160,7 @@ class SiswaController extends Controller
                 'Validasi gagal',
                 422
             );
+
         } catch (Throwable $e) {
             Log::error('Gagal memperbarui siswa: ' . $e->getMessage());
 
@@ -201,6 +202,62 @@ class SiswaController extends Controller
             return ApiResponse::response(
                 null,
                 'Gagal menghapus data siswa',
+                500
+            );
+        }
+    }
+
+    // IMPORT DATA SISWA DARI EXCEL
+    public function importExcel(Request $request)
+    {
+        try {
+            $request->validate([
+                'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+            ]);
+
+            Excel::import(
+                new SiswaImport,
+                $request->file('file')
+            );
+
+            Cache::store('redis')->forget('siswa');
+
+            return ApiResponse::response(
+                null,
+                'Data siswa berhasil diimport',
+                200
+            );
+
+        } catch (ValidationException $e) {
+            return ApiResponse::response(
+                $e->errors(),
+                'Validasi file gagal',
+                422
+            );
+
+        } catch (ExcelValidationException $e) {
+            $failures = [];
+
+            foreach ($e->failures() as $failure) {
+                $failures[] = [
+                    'baris' => $failure->row(),
+                    'kolom' => $failure->attribute(),
+                    'errors' => $failure->errors(),
+                ];
+            }
+
+            return ApiResponse::response(
+                $failures,
+                'Validasi data Excel gagal',
+                422
+            );
+
+        } catch (Throwable $e) {
+            Log::error('Gagal import Excel: ' . $e->getMessage());
+
+            return ApiResponse::response(
+                null,
+                'Gagal mengimport data siswa',
                 500
             );
         }
