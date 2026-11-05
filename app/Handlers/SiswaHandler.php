@@ -2,25 +2,25 @@
 
 namespace App\Handlers;
 
-use App\Repositories\SiswaRepository;
+use App\Services\SiswaService;
 
 class SiswaHandler
 {
-    protected $repository;
+    protected $service;
 
-    public function __construct(SiswaRepository $repository)
+    public function __construct(SiswaService $service)
     {
-        $this->repository = $repository;
+        $this->service = $service;
     }
 
     public function index()
     {
-        return $this->repository->index();
+        return $this->service->index();
     }
 
     public function show($id)
     {
-        $siswa = $this->repository->show($id);
+        $siswa = $this->service->show($id);
 
         if (!$siswa) {
             abort(404, 'Data siswa tidak ditemukan');
@@ -31,28 +31,28 @@ class SiswaHandler
 
     public function store(array $data)
     {
-        return $this->repository->store($data);
+        return $this->service->store($data);
     }
 
     public function update($id, array $data)
     {
-        $siswa = $this->repository->show($id);
+        $siswa = $this->service->show($id);
 
         if (!$siswa) {
             abort(404, 'Data siswa tidak ditemukan');
         }
 
-        return $this->repository->update($id, $data);
+        return $this->service->update($id, $data);
     }
 
     public function destroy($id)
     {
-        $siswa = $this->repository->show($id);
+        $siswa = $this->service->show($id);
 
         if (!$siswa) {
             abort(404, 'Data siswa tidak ditemukan');
         }
 
-        return $this->repository->destroy($id);
+        return $this->service->destroy($id);
     }
 }

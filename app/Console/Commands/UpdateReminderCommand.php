@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Jobs\ProcessReminderJob;
 use App\Models\Reminder;
+use App\Models\ScheduledJobError;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -19,8 +20,7 @@ class UpdateReminderCommand extends Command
     {
         try {
             $sekarang = Carbon::now('Asia/Jakarta');
-
-            // Ambil reminder yang belum selesai dan belum dikirim ke queue.
+            
             $reminders = Reminder::whereNull('notified_at')
                 ->whereNull('dispatched_at')
                 ->whereIn('status', ['menunggu', 'proses'])
@@ -32,7 +32,6 @@ class UpdateReminderCommand extends Command
             ]);
 
             foreach ($reminders as $reminder) {
-                // Baca waktu reminder.
                 $waktuReminder = Carbon::parse(
                     $reminder->remind_at,
                     'Asia/Jakarta'
@@ -46,34 +45,13 @@ class UpdateReminderCommand extends Command
                     'dispatched_at' => $reminder->dispatched_at,
                 ]);
 
-                // Jika waktu reminder sudah tiba, kirim Job ke queue.
-                Log::info('Perbandingan waktu reminder', [
-                    'waktu_reminder' => $waktuReminder->toIso8601String(),
-                    'sekarang' => $sekarang->toIso8601String(),
-                    'sudah_jatuh_tempo' => $waktuReminder->lessThanOrEqualTo($sekarang),
-                ]);
                 if ($waktuReminder->lessThanOrEqualTo($sekarang)) {
-                    Log::info('Reminder sudah jatuh tempo', [
-                        'id' => $reminder->id,
-                    ]);
-
                     $reminder->update([
                         'status' => 'proses',
                         'dispatched_at' => $sekarang,
                     ]);
 
                     ProcessReminderJob::dispatch($reminder->id);
-
-                    continue;
-                }
-
-                // Jika waktu reminder tinggal satu menit atau kurang.
-                if ($waktuReminder->lessThanOrEqualTo(
-                    $sekarang->copy()->addMinute()
-                )) {
-                    $reminder->update([
-                        'status' => 'proses',
-                    ]);
                 }
             }
 
@@ -85,9 +63,23 @@ class UpdateReminderCommand extends Command
             return Command::SUCCESS;
 
         } catch (Throwable $e) {
+
             Log::error('Gagal update reminder', [
                 'error' => $e->getMessage(),
             ]);
+
+            try {
+                ScheduledJobError::create([
+                    'command' => 'reminder:update',
+                    'error_message' => $e->getMessage(),
+                    'failed_at' => Carbon::now('Asia/Jakarta'),
+                ]);
+
+            } catch (Throwable $dbError) {
+                Log::critical('Gagal menyimpan error scheduler ke database', [
+                    'error' => $dbError->getMessage(),
+                ]);
+            }
 
             $this->error('Terjadi kesalahan saat update reminder');
 

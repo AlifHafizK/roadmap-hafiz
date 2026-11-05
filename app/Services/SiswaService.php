@@ -17,13 +17,24 @@ class SiswaService
     // Mengambil semua data siswa dengan Redis Cache
     public function index()
     {
-        return Cache::store('redis')->remember(
+        $cache = Cache::store('redis');
+
+        // Periksa apakah data tersedia di Redis
+        $fromCache = $cache->has('siswa');
+
+        // Ambil data dari Redis atau Database
+        $siswa = $cache->remember(
             'siswa',
             60,
             function () {
                 return $this->repository->index();
             }
         );
+
+        return [
+            'source' => $fromCache ? 'cache' : 'database',
+            'data' => $siswa
+        ];
     }
 
     // Mengambil satu data siswa

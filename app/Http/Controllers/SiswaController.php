@@ -58,10 +58,9 @@ class SiswaController extends Controller
     {
         try {
             $validated = $request->validate([
-                'nis' => 'required|string|max:30|unique:siswa,nis',
-                'nama' => 'required|string|max:100',
+                'name' => 'required|string|max:100',
                 'kelas' => 'required|string|max:50',
-                'jurusan' => 'required|string|max:100',
+                'umur' => 'required|integer|min:1',
             ]);
 
             $siswa = Siswa::create($validated);
@@ -138,10 +137,9 @@ class SiswaController extends Controller
             }
 
             $validated = $request->validate([
-                'nis' => 'sometimes|required|string|max:30|unique:siswa,nis,' . $siswa->id,
-                'nama' => 'sometimes|required|string|max:100',
-                'kelas' => 'sometimes|required|string|max:50',
-                'jurusan' => 'sometimes|required|string|max:100',
+                'name' => 'required|string|max:100',
+                'kelas' => 'required|string|max:50',
+                'umur' => 'required|integer|min:1',
             ]);
 
             $siswa->update($validated);
@@ -261,5 +259,30 @@ class SiswaController extends Controller
                 500
             );
         }
+    }
+
+    public function batchStore(Request $request)
+    {
+        $request->validate([
+            'siswa' => 'required|array',
+            'siswa.*.name' => 'required|string|max:100',
+            'siswa.*.kelas' => 'required|string|max:50',
+            'siswa.*.umur' => 'required|integer',
+        ]);
+
+        $data = collect($request->siswa)->map(function ($item) {
+            $item['created_at'] = now();
+            $item['updated_at'] = now();
+
+            return $item;
+        })->toArray();
+
+        foreach (array_chunk($data, 100) as $chunk) {
+            Siswa::insert($chunk);
+        }
+
+        return response()->json([
+            'message' => 'Data siswa berhasil ditambahkan'
+        ]);
     }
 }
